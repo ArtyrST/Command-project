@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Nike Showcase</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">NIKE — Showcase</div>
+            <nav>
+                <a href="#products">Продукти</a>
+                <a href="#about">Про</a>
+                <a href="https://forms.gle/replace-with-your-form-id" target="_blank" class="btn form-btn" style="display: none;">Google Форма</a>
+                <a href="auth.html" class="btn auth-btn">Увійти / Зареєструватися</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container hero-grid">
+            <div class="hero-left">
+                <h1>Cyber Runner — колекція Nike</h1>
+                <p>Нова колекція від Nike</p>
+                <a href="#products" class="cta">Переглянути пари</a>
+            </div>
+            <div class="hero-placeholder"></div>
+        </div>
+    </section>
+
+    <section id="products" class="products">
+        <div class="container">
+            <h2 class="section-title">Пари для презентації</h2>
+            <div class="product-list">
+                <p id="loadingProducts">Завантаження товарів...</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="about">
+        <div class="container">
+            <h2 class="section-title">Ваш профіль</h2>
+            <p id="userInfo">Ви не авторизовані.</p>
+            <button id="logoutBtn" style="display: none;">Вийти</button>
+        </div>
+    </section>
+
+    <footer>
+        <p>© 2025 NIKE — Showcase</p>
+    </footer>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <button id="closeBtn" class="close-btn">&times;</button>
+            <h3 id="modalTitle">Деталі товару</h3>
+            <div class="placeholder"></div>
+            <p id="modalDescription">Завантаження деталей...</p>
+        </div>
+    </div>
+
+    <script type="module" src="firebase.js"></script>
+</body>
+</html>

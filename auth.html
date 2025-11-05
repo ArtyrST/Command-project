@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Авторизація — NIKE Showcase</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">NIKE — Showcase</div>
+            <nav>
+                <a href="index.html">Головна</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="auth-section">
+        <div class="container auth-container">
+            <h2>Увійти або зареєструватися</h2>
+
+            <form id="registerForm" class="auth-form">
+                <h3>Реєстрація</h3>
+                <input type="email" name="email" placeholder="Email" required>
+                <input type="password" name="password" placeholder="Пароль" required>
+                <button type="submit">Зареєструватися</button>
+            </form>
+
+            <form id="loginForm" class="auth-form">
+                <h3>Вхід</h3>
+                <input type="email" name="email" placeholder="Email" required>
+                <input type="password" name="password" placeholder="Пароль" required>
+                <button type="submit">Увійти</button>
+            </form>
+
+            <div class="auth-actions">
+                <p id="userInfo">Ви не авторизовані.</p>
+                <button id="logoutBtn" style="display: none;">Вийти</button>
+            </div>
+        </div>
+    </section>
+
+    <script type="module" src="firebase.js"></script>
+</body>
+</html>
