@@ -65,6 +65,7 @@ if (registerForm) {
       const user = userCredential.user;
 
       // Збереження додаткових даних у Firestore
+      // Цей блок є КЛЮЧОВИМ для збереження даних у базу.
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
         createdAt: new Date().toISOString()
@@ -73,8 +74,12 @@ if (registerForm) {
       alert("Реєстрація успішна! Ви будете перенаправлені.");
       window.location.href = "index.html"; 
     } catch (err) {
-      console.error("Помилка реєстрації:", err);
-      alert("Помилка: " + err.message);
+      console.error("Помилка реєстрації:", err.code, err.message); // Додано виведення коду помилки
+      // Більш інформативне повідомлення про помилку для користувача
+      const userMessage = err.code === 'auth/email-already-in-use' ? 
+        "Помилка: Цей email вже використовується." : 
+        "Помилка реєстрації. Перевірте консоль для деталей.";
+      alert(userMessage);
     }
   });
 }
@@ -91,8 +96,8 @@ if (loginForm) {
       alert("Вхід виконано! Ви будете перенаправлені на головну.");
       window.location.href = "index.html";
     } catch (err) {
-      console.error("Помилка входу:", err);
-      alert("Помилка: " + err.message);
+      console.error("Помилка входу:", err.code, err.message); // Додано виведення коду помилки
+      alert("Помилка входу. Перевірте email та пароль.");
     }
   });
 }
@@ -100,13 +105,18 @@ if (loginForm) {
 // Вихід користувача (Працює на обох сторінках)
 if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
-    await signOut(auth);
-    alert("Ви вийшли з акаунта.");
-    // Після виходу перенаправляємо на головну, або оновлюємо сторінку auth
-    if (window.location.pathname.includes('auth.html')) {
-      window.location.reload();
-    } else {
-      // На index.html, onAuthStateChanged оновиться і приховає елементи
+    try {
+      await signOut(auth);
+      alert("Ви вийшли з акаунта.");
+      // Після виходу перенаправляємо на головну, або оновлюємо сторінку auth
+      if (window.location.pathname.includes('auth.html')) {
+        window.location.reload();
+      } else {
+        // На index.html, onAuthStateChanged оновиться і приховає елементи
+      }
+    } catch (error) {
+      console.error("Помилка виходу:", error);
+      alert("Не вдалося вийти з акаунта.");
     }
   });
 }
@@ -126,8 +136,9 @@ onAuthStateChanged(auth, (user) => {
     if (userInfo) userInfo.textContent = "Ви не авторизовані.";
     if (logoutBtn) logoutBtn.style.display = "none";
     googleForms.forEach(btn => btn.style.display = "none");
+    // Показуємо кнопку "Увійти" (якщо не на сторінці auth)
     if (authBtn && !window.location.pathname.includes('auth.html')) {
-      authBtn.style.display = 'inline-block'; // Показуємо кнопку "Увійти" (якщо не на сторінці auth)
+      authBtn.style.display = 'inline-block'; 
     }
   }
 });
@@ -136,9 +147,9 @@ onAuthStateChanged(auth, (user) => {
 // === 4. ЛОГІКА ТОВАРІВ (Index.html) ===
 
 /**
- * Рендерить картки товарів на сторінці.
- * @param {Array<Object>} products - Масив об'єктів товарів.
- */
+ * Рендерить картки товарів на сторінці.
+ * @param {Array<Object>} products - Масив об'єктів товарів.
+ */
 const renderProducts = (products) => {
   if (!productList) return;
 
@@ -171,10 +182,13 @@ const renderProducts = (products) => {
 };
 
 /**
- * Завантажує список товарів з колекції 'products' у Firestore.
- */
+ * Завантажує список товарів з колекції 'products' у Firestore.
+ */
 const loadProducts = async () => {
   const loadingProducts = document.getElementById('loadingProducts');
+  
+  // Перевірка, чи існує елемент productList (інакше це не index.html)
+  if (!productList) return; 
 
   try {
     const productsRef = collection(db, "products");
@@ -195,8 +209,13 @@ const loadProducts = async () => {
       renderProducts(productsArray);
     }
   } catch (error) {
-    console.error("Помилка завантаження товарів:", error);
-    if (loadingProducts) loadingProducts.textContent = 'Помилка завантаження. Перевірте правила доступу Firestore.';
+    console.error("Помилка завантаження товарів:", error.code, error.message);
+    // Більш чітке повідомлення про помилку
+    const errorMessage = error.code === 'permission-denied' ? 
+      'Помилка доступу: Перевірте Правила Безпеки Firestore для колекції "products".' :
+      'Помилка завантаження. Перевірте консоль для деталей.';
+      
+    if (loadingProducts) loadingProducts.textContent = errorMessage;
   }
 };
 
@@ -219,3 +238,50 @@ if (modal) {
     if (e.target === modal) modal.classList.remove('show');
   });
 }
+
+// ... (Імпорти та Конфігурація Firebase - без змін)
+
+// === 3. АВТЕНТИФІКАЦІЯ ===
+
+// Реєстрація користувача (Працює тільки на auth.html)
+if (registerForm) {
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = e.target.email.value;
+    const password = e.target.password.value;
+    // ОТРИМУЄМО НОВЕ ПОЛЕ ПІДТВЕРДЖЕННЯ
+    const confirmPassword = e.target.confirmPassword.value; 
+
+    // === ПЕРЕВІРКА ПАРОЛІВ ===
+    if (password !== confirmPassword) {
+      alert("Помилка: Паролі не збігаються!");
+      // Очищаємо поля паролів для безпеки та повторного введення
+      e.target.password.value = '';
+      e.target.confirmPassword.value = '';
+      return; // Зупиняємо виконання функції
+    }
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Збереження додаткових даних у Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        createdAt: new Date().toISOString()
+      });
+
+      alert("Реєстрація успішна! Ви будете перенаправлені.");
+      window.location.href = "index.html"; 
+    } catch (err) {
+      console.error("Помилка реєстрації:", err.code, err.message);
+      // Більш інформативне повідомлення про помилку для користувача
+      const userMessage = err.code === 'auth/email-already-in-use' ? 
+        "Помилка: Цей email вже використовується." : 
+        "Помилка реєстрації. Перевірте консоль для деталей.";
+      alert(userMessage);
+    }
+  });
+}
+
+// ... (Інші частини коду залишаються без змін)
