@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Адмін-панель — NIKE Showcase</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">NIKE — Showcase</div>
+            <nav>
+                <a href="index.html">Головна</a>
+                </nav>
+        </div>
+    </header>
+
+    <section id="admin-panel" class="auth-section">
+        <div class="container auth-container">
+            <h2 class="section-title">Адмін-панель: Додати товар</h2>
+            
+            <p id="authMessage" style="color: #ff4500; margin-bottom: 20px;">
+                Будь ласка, увійдіть як адміністратор для доступу.
+            </p>
+            
+            <form id="addProductForm" class="auth-form" style="display:none;">
+                <input type="text" name="productName" placeholder="Назва товару" required>
+                <input type="number" name="productPrice" placeholder="Ціна (грн)" required step="0.01">
+                <textarea name="productDescription" placeholder="Опис товару" rows="4" required></textarea>
+                <button type="submit">Додати товар</button>
+            </form>
+        </div>
+    </section>
+
+    <footer>
+        <p>© 2025 NIKE — Showcase</p>
+    </footer>
+
+    <script type="module" src="firebase.js"></script>
+</body>
+</html>
