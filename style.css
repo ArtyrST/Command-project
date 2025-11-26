@@ -430,3 +430,151 @@ footer {
     height: 200px;
   }
 }
+
+/* === CATALOG LAYOUT === */
+
+.catalog-section {
+  padding: 60px 0;
+}
+
+.catalog-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+.filters {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.filters h2 {
+  margin-bottom: 16px;
+}
+
+.filter-block {
+  margin-bottom: 20px;
+}
+
+.filter-block h3 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.filter-checkbox,
+.filter-radio {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.filter-checkbox input,
+.filter-radio input {
+  margin-right: 6px;
+}
+
+.sizes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.sizes-grid label {
+  font-size: 0.9rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.sizes-grid input {
+  margin-right: 4px;
+}
+
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.price-range input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+.filter-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-primary,
+.btn-ghost {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+/* CATALOG CONTENT */
+
+.catalog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.catalog-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.catalog-toolbar h1 {
+  font-size: 1.6rem;
+}
+
+.sort-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.sort-wrapper select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .catalog-layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,380 +1,584 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
 import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
-  getFirestore,
-  doc,
-  setDoc,
-  collection,
-  getDocs,
-  query,
-  getDoc, 
-  addDoc 
+  getFirestore,
+  doc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  getDoc,
+  addDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// === 1. КОНФІГУРАЦІЯ FIREBASE ===
-// ВАЖЛИВО: Використовуйте свої фактичні ключі
+// === 1. CONFIG FIREBASE ===
 const firebaseConfig = {
-  apiKey: "AIzaSyAIY0sgeBoMk5Sn_xNTjaFije2Qq-cghuU",
-  authDomain: "database1-43592.firebaseapp.com",
-  projectId: "database1-43592",
-  storageBucket: "database1-43592.firebasestorage.app",
-  messagingSenderId: "975312972801",
-  appId: "1:975312972801:web:d1129010b60383dce6e400",
-  measurementId: "G-ZVBDL6D3VD"
+  apiKey: "AIzaSyAIY0sgeBoMk5Sn_xNTjaFije2Qq-cghuU",
+  authDomain: "database1-43592.firebaseapp.com",
+  projectId: "database1-43592",
+  storageBucket: "database1-43592.firebasestorage.app",
+  messagingSenderId: "975312972801",
+  appId: "1:975312972801:web:d1129010b60383dce6e400",
+  measurementId: "G-ZVBDL6D3VD"
 };
 
-// Ініціалізація Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// === 2. DOM ELEMENTS ===
 
-// === 2. DOM ЕЛЕМЕНТИ ===
+// Auth
+const registerForm = document.getElementById("registerForm");
+const loginForm = document.getElementById("loginForm");
+const logoutBtn = document.getElementById("logoutBtn");
+const userInfo = document.getElementById("userInfo");
+const userAvatar = document.getElementById("userAvatar");
+const authBtn = document.querySelector(".auth-btn");
 
-const registerForm = document.getElementById('registerForm');
-const loginForm = document.getElementById('loginForm');
-const logoutBtn = document.getElementById('logoutBtn');
-const userInfo = document.getElementById('userInfo');
-const userAvatar = document.getElementById('userAvatar'); 
-const googleForms = document.querySelectorAll('.form-btn'); // Залишаємо для форм у шапці
-const productList = document.querySelector('.product-list');
+// Admin
+const adminTab = document.getElementById("adminTab");
+const addProductForm = document.getElementById("addProductForm");
 
-const adminTab = document.getElementById('adminTab'); // Кнопка "Додати товар"
-const addProductForm = document.getElementById('addProductForm'); // Форма додавання
+// Home products
+const homeProductList = document.getElementById("homeProducts");
+const loadingHomeProducts = document.getElementById("loadingProducts");
 
-// Елементи для модального вікна
-const modal = document.getElementById('modal');
-const closeBtn = document.getElementById('closeBtn');
-const modalTitle = document.getElementById('modalTitle');
-const modalDescription = document.getElementById('modalDescription');
+// Catalog page
+const catalogPage = document.getElementById("catalogPage");
+const catalogProductList = document.getElementById("catalogProducts");
+const catalogLoading = document.getElementById("catalogLoading");
 
-// === 3. ДОПОМІЖНА ЛОГІКА: АДМІН-СТАТУС ===
+// Modal
+const modal = document.getElementById("modal");
+const closeBtn = document.getElementById("closeBtn");
+const modalTitle = document.getElementById("modalTitle");
+const modalDescription = document.getElementById("modalDescription");
 
-/**
- * Перевіряє статус адміністратора користувача у Firestore.
- */
+// === 3. GLOBAL STATE ===
+let allProducts = [];
+
+// === 4. HELPERS ===
+
 const checkAdminStatus = async (user) => {
-    if (!user) return false;
-    try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        return userDoc.exists() && userDoc.data().isAdmin === true; 
-    } catch (error) {
-        console.error("Помилка перевірки статусу адміна:", error);
-        return false;
-    }
+  if (!user) return false;
+  try {
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    return userDoc.exists() && userDoc.data().isAdmin === true;
+  } catch (error) {
+    console.error("Помилка перевірки статусу адміна:", error);
+    return false;
+  }
 };
 
-/**
- * ОНОВЛЕНО: Функція, яка оновлює видимість усіх елементів, 
- * які вимагають авторизації (.auth-required).
- */
 const updateVisibility = () => {
-    const isUserLoggedIn = auth.currentUser !== null; 
-    
-    // Шукаємо всі елементи з класом auth-required (включаючи кнопки "Замовити" з карток)
-    const authRequiredElements = document.querySelectorAll('.auth-required');
+  const isUserLoggedIn = auth.currentUser !== null;
+  const authRequiredElements = document.querySelectorAll(".auth-required");
 
-    authRequiredElements.forEach(btn => {
-        btn.style.display = isUserLoggedIn ? "inline-block" : "none";
-    });
+  authRequiredElements.forEach((el) => {
+    el.style.display = isUserLoggedIn ? "inline-block" : "none";
+  });
 };
 
+// шаблон картки товару
+const productCardTemplate = (product) => `
+  <div class="product-card"
+       data-name="${product.name}"
+       data-price="${product.price}"
+       data-desc="${product.description || "Опис відсутній"}">
+    <div class="product-visual"></div>
+    <div class="product-info">
+      <h4>${product.name}</h4>
+      <p>Ціна: ${product.price} грн</p>
+    </div>
+    <div class="actions">
+      <button class="preview-btn">Деталі</button>
+      <a href="https://forms.gle/replace-with-your-form-id"
+         target="_blank"
+         class="form-btn auth-required"
+         style="display:none;">
+         Замовити
+      </a>
+    </div>
+  </div>
+`;
 
-// === 4. ЛОГІКА АДМІН-ПАНЕЛІ (ДОДАВАННЯ ТОВАРУ БЕЗ ФОТО) ===
+// навішування обробників на кнопки "Деталі"
+const attachCardEvents = (container) => {
+  if (!container || !modal) return;
+
+  const buttons = container.querySelectorAll(".preview-btn");
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const card = btn.closest(".product-card");
+      if (!card) return;
+      modalTitle.textContent = card.dataset.name || "Товар";
+      modalDescription.textContent = card.dataset.desc || "Опис відсутній";
+      modal.classList.add("show");
+    });
+  });
+};
+
+// === 5. ADMIN: ДОДАВАННЯ ТОВАРУ ===
 
 if (addProductForm) {
-    addProductForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = e.target.productName.value;
-        const price = parseFloat(e.target.productPrice.value);
-        const description = e.target.productDescription.value;
-        
-        if (!name || isNaN(price) || !description) {
-            alert("Будь ласка, заповніть усі поля (ціна має бути числом).");
-            return;
-        }
+  addProductForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-        const user = auth.currentUser;
-        if (!user || !(await checkAdminStatus(user))) {
-             alert("Помилка доступу: Ви не адміністратор.");
-             return;
-        }
+    const name = e.target.productName.value.trim();
+    const brand = (e.target.productBrand.value || "Nike").trim();
+    const gender = (e.target.productGender.value || "unisex").toLowerCase();
+    const sizesRaw = e.target.productSizes.value || "";
+    const price = parseFloat(e.target.productPrice.value);
+    const description = e.target.productDescription.value.trim();
 
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Збереження...';
+    const sizes = sizesRaw
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n));
 
-        try {
-            const productsCollection = collection(db, "products");
-            await addDoc(productsCollection, {
-                name: name,
-                price: price,
-                description: description,
-                createdAt: new Date().toISOString()
-            });
+    if (!name || isNaN(price) || !description || sizes.length === 0) {
+      alert("Будь ласка, заповніть всі поля коректно (у т.ч. розміри).");
+      return;
+    }
 
-            alert("Товар успішно додано! Перенаправлення на головну сторінку.");
-            window.location.href = "index.html"; 
-        } catch (error) {
-            console.error("Помилка додавання товару (МОЖЛИВО, ПРАВИЛА FIRESTORE):", error);
-            alert("Помилка: Не вдалося додати товар. Перевірте консоль (F12)!");
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Додати товар';
-        }
-    });
+    const user = auth.currentUser;
+    if (!user || !(await checkAdminStatus(user))) {
+      alert("Помилка доступу: Ви не адміністратор.");
+      return;
+    }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Збереження...";
+
+    try {
+      const productsCollection = collection(db, "products");
+      await addDoc(productsCollection, {
+        name,
+        brand,
+        gender,
+        sizes,
+        price,
+        description,
+        createdAt: new Date().toISOString()
+      });
+
+      alert("Товар успішно додано! Перенаправлення на головну сторінку.");
+      window.location.href = "index.html";
+    } catch (error) {
+      console.error("Помилка додавання товару:", error);
+      alert("Помилка: Не вдалося додати товар. Перевірте консоль (F12)!");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Додати товар";
+    }
+  });
 }
 
+// === 6. AUTH ===
 
-// === 5. АВТЕНТИФІКАЦІЯ ===
-
-// Реєстрація користувача (Працює тільки на auth.html)
+// Реєстрація
 if (registerForm) {
-  registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = e.target.email.value;
-    const password = e.target.password.value;
-    const confirmPassword = e.target.confirmPassword.value;
+  registerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = e.target.email.value;
+    const password = e.target.password.value;
+    const confirmPassword = e.target.confirmPassword.value;
 
-    if (password !== confirmPassword) {
-        alert("Помилка: Паролі не збігаються!");
-        e.target.password.value = '';
-        e.target.confirmPassword.value = '';
-        return; 
-    }
+    if (password !== confirmPassword) {
+      alert("Помилка: Паролі не збігаються!");
+      e.target.password.value = "";
+      e.target.confirmPassword.value = "";
+      return;
+    }
 
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
 
-      // Збереження додаткових даних у Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        isAdmin: false, // Встановлюємо false для нових користувачів
-        createdAt: new Date().toISOString()
-      });
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        isAdmin: false,
+        createdAt: new Date().toISOString()
+      });
 
-      alert("Реєстрація успішна! Ви будете перенаправлені.");
-      window.location.href = "index.html"; 
-    } catch (err) {
-      console.error("Помилка реєстрації:", err.code, err.message);
-      const userMessage = err.code === 'auth/email-already-in-use' ? 
-        "Помилка: Цей email вже використовується." : 
-        "Помилка реєстрації. Перевірте консоль для деталей.";
-      alert(userMessage);
-    }
-  });
+      alert("Реєстрація успішна! Ви будете перенаправлені.");
+      window.location.href = "index.html";
+    } catch (err) {
+      console.error("Помилка реєстрації:", err.code, err.message);
+      const userMessage =
+        err.code === "auth/email-already-in-use"
+          ? "Помилка: Цей email вже використовується."
+          : "Помилка реєстрації. Перевірте консоль для деталей.";
+      alert(userMessage);
+    }
+  });
 }
 
-// Вхід користувача (Працює тільки на auth.html)
+// Вхід
 if (loginForm) {
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = e.target.email.value;
-    const password = e.target.password.value;
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = e.target.email.value;
+    const password = e.target.password.value;
 
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      alert("Вхід виконано! Ви будете перенаправлені на головну.");
-      window.location.href = "index.html";
-    } catch (err) {
-      console.error("Помилка входу:", err.code, err.message);
-      alert("Помилка входу. Перевірте email та пароль.");
-    }
-  });
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      alert("Вхід виконано! Ви будете перенаправлені на головну.");
+      window.location.href = "index.html";
+    } catch (err) {
+      console.error("Помилка входу:", err.code, err.message);
+      alert("Помилка входу. Перевірте email та пароль.");
+    }
+  });
 }
 
-// Вихід користувача (Працює на обох сторінках)
+// Вихід
 if (logoutBtn) {
-  logoutBtn.addEventListener('click', async () => {
-    try {
-      await signOut(auth);
-      alert("Ви вийшли з акаунта.");
-      // Після виходу оновлюємо сторінку, щоб скинути стан
-      window.location.reload();
-    } catch (error) {
-      console.error("Помилка виходу:", error);
-      alert("Не вдалося вийти з акаунта.");
-    }
-  });
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      alert("Ви вийшли з акаунта.");
+      window.location.reload();
+    } catch (error) {
+      console.error("Помилка виходу:", error);
+      alert("Не вдалося вийти з акаунта.");
+    }
+  });
 }
 
-// ОНОВЛЕНО: Відстеження стану користувача (Оновлює інтерфейс на обох сторінках)
-onAuthStateChanged(auth, async (user) => { 
-  const authBtn = document.querySelector('.auth-btn');
+// === 7. AUTH STATE & UI ===
 
-    // 1. Оновлюємо видимість елементів, що вимагають авторизації (працює для кнопок у шапці)
-    updateVisibility();
+onAuthStateChanged(auth, async (user) => {
+  updateVisibility();
 
-    // Визначаємо, чи ми знаходимося на сторінці admin.html
-    const isAdminPage = window.location.pathname.includes('admin.html');
-    let isAdmin = false;
+  const isAdminPage =
+    window.location.pathname.endsWith("admin.html") ||
+    window.location.pathname.includes("/admin.html");
 
-  if (user) {
-    // Користувач увійшов
-    if (userInfo) userInfo.textContent = user.email;
-    if (userInfo) userInfo.style.display = "inline-block";
-    if (logoutBtn) logoutBtn.style.display = "inline-block";
-    if (userAvatar) userAvatar.style.display = "flex"; 
-    if (authBtn) authBtn.style.display = 'none'; 
-    
-    // --- ЛОГІКА АДМІНА: Перевірка статусу ---
-    isAdmin = await checkAdminStatus(user);
-    
-    // 2. Керування кнопкою "Додати товар" (у навігації index.html)
-    if (adminTab) {
-        adminTab.style.display = isAdmin ? "inline-block" : "none";
-    }
+  let isAdmin = false;
 
-    // 3. Логіка для сторінки admin.html
-    if (isAdminPage) {
-        // Елементи для admin.html
-        const authMessage = document.getElementById('authMessage');
-        
-        if (isAdmin) {
-            // Показуємо форму адміну
-            if (addProductForm) addProductForm.style.display = 'flex';
-            if (authMessage) authMessage.style.display = 'none';
-        } else {
-            // Показуємо повідомлення про відмову, якщо не адмін
-            if (authMessage) {
-                authMessage.textContent = "Доступ заборонено. Тільки адміністратори можуть додавати товари.";
-                authMessage.style.display = 'block';
-            }
-            if (addProductForm) addProductForm.style.display = 'none';
-        }
-    }
-    
-  } else {
-    // Користувач вийшов (НЕ авторизований)
-    if (userInfo) userInfo.style.display = "none";
-    if (logoutBtn) logoutBtn.style.display = "none";
-    if (userAvatar) userAvatar.style.display = "none";
+  if (user) {
+    // логін
+    if (userInfo) {
+      userInfo.textContent = user.email;
+      userInfo.style.display = "inline-block";
+    }
+    if (logoutBtn) logoutBtn.style.display = "inline-block";
+    if (userAvatar) userAvatar.style.display = "flex";
+    if (authBtn) authBtn.style.display = "none";
 
-    if (authBtn) {
-        authBtn.style.display = 'inline-block'; 
-    }
-    
-    // Приховуємо кнопку "Додати товар"
-    if (adminTab) {
-        adminTab.style.display = "none";
-    }
-    
-    // Логіка для admin.html, коли користувач не увійшов
-    if (isAdminPage) {
-        const authMessage = document.getElementById('authMessage');
-        
-        if (authMessage) {
-            authMessage.textContent = "Будь ласка, увійдіть як адміністратор для доступу.";
-            authMessage.style.display = 'block';
-        }
-        if (addProductForm) addProductForm.style.display = 'none';
-    }
-  }
+    isAdmin = await checkAdminStatus(user);
+
+    if (adminTab) {
+      adminTab.style.display = isAdmin ? "inline-block" : "none";
+    }
+
+    if (isAdminPage) {
+      const authMessage = document.getElementById("authMessage");
+      if (isAdmin) {
+        if (addProductForm) addProductForm.style.display = "flex";
+        if (authMessage) authMessage.style.display = "none";
+      } else {
+        if (authMessage) {
+          authMessage.textContent =
+            "Доступ заборонено. Тільки адміністратори можуть додавати товари.";
+          authMessage.style.display = "block";
+        }
+        if (addProductForm) addProductForm.style.display = "none";
+      }
+    }
+  } else {
+    // логаут
+    if (userInfo) userInfo.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "none";
+    if (userAvatar) userAvatar.style.display = "none";
+    if (authBtn) authBtn.style.display = "inline-block";
+
+    if (adminTab) adminTab.style.display = "none";
+
+    if (isAdminPage) {
+      const authMessage = document.getElementById("authMessage");
+      if (authMessage) {
+        authMessage.textContent =
+          "Будь ласка, увійдіть як адміністратор для доступу.";
+        authMessage.style.display = "block";
+      }
+      if (addProductForm) addProductForm.style.display = "none";
+    }
+  }
 });
 
+// === 8. PRODUCTS: LOAD FROM FIRESTORE ===
 
-// === 6. ЛОГІКА ТОВАРІВ (Index.html) ===
+const normalizeProduct = (docSnap) => {
+  const data = docSnap.data() || {};
+  let createdAt = new Date();
 
-/**
- * Рендерить картки товарів на сторінці.
- * @param {Array<Object>} products - Масив об'єктів товарів.
- */
-const renderProducts = (products) => {
-  if (!productList) return;
+  if (data.createdAt) {
+    if (data.createdAt.toDate) {
+      createdAt = data.createdAt.toDate();
+    } else if (typeof data.createdAt === "string") {
+      const d = new Date(data.createdAt);
+      if (!isNaN(d.getTime())) createdAt = d;
+    }
+  }
 
-  productList.innerHTML = products.map(product => `
-    <div class="product-card" data-name="${product.name}" data-price="${product.price}" data-desc="${product.description || 'Опис відсутній'}">
-      <div class="product-visual"> 
-              </div>
-      <div class="product-info">
-        <h4>${product.name}</h4>
-        <p>Ціна: ${product.price} грн</p>
-      </div>
-      <div class="actions">
-        <button class="preview-btn">Деталі</button>
-                <a href="https://forms.gle/replace-with-your-form-id" target="_blank" class="form-btn auth-required" style="display: none;">Замовити</a>
-      </div>
-    </div>
-  `).join('');
+  let sizes = [];
+  if (Array.isArray(data.sizes)) {
+    sizes = data.sizes.map((s) => parseInt(s, 10)).filter((n) => !isNaN(n));
+  } else if (typeof data.sizes === "string") {
+    sizes = data.sizes
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n));
+  }
 
-  // Додаємо обробники подій для нових кнопок "Деталі"
-  document.querySelectorAll('.product-card .preview-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const card = btn.closest('.product-card');
-      if (modal) {
-        modalTitle.textContent = card.dataset.name;
-        modalDescription.textContent = card.dataset.desc;
-        modal.classList.add('show');
-      }
-    });
-  });
+  return {
+    id: docSnap.id,
+    name: data.name || "Без назви",
+    brand: (data.brand || "Nike").toLowerCase(),
+    gender: (data.gender || "unisex").toLowerCase(),
+    sizes,
+    price: Number(data.price) || 0,
+    description: data.description || "Опис відсутній",
+    createdAt
+  };
 };
 
-/**
- * Завантажує список товарів з колекції 'products' у Firestore.
- * Виправлено: Додано виклик updateVisibility() після renderProducts.
- */
+const renderHomeProducts = (products) => {
+  if (!homeProductList) return;
+
+  if (loadingHomeProducts) loadingHomeProducts.style.display = "none";
+
+  if (!products.length) {
+    homeProductList.innerHTML =
+      '<p>Товари відсутні. Додайте їх у колекцію "products" у Firestore.</p>';
+    return;
+  }
+
+  // можна обмежити, наприклад перші 6
+  const subset = products.slice(0, 6);
+
+  homeProductList.innerHTML = subset.map(productCardTemplate).join("");
+  attachCardEvents(homeProductList);
+  updateVisibility();
+};
+
+const renderCatalogProducts = (products) => {
+  if (!catalogProductList) return;
+
+  if (catalogLoading) catalogLoading.style.display = "none";
+
+  if (!products.length) {
+    catalogProductList.innerHTML =
+      "<p>За вибраними фільтрами товари не знайдені.</p>";
+    return;
+  }
+
+  catalogProductList.innerHTML = products.map(productCardTemplate).join("");
+  attachCardEvents(catalogProductList);
+  updateVisibility();
+};
+
 const loadProducts = async () => {
-  const loadingProducts = document.getElementById('loadingProducts');
+  const hasAnyProductContainer = homeProductList || catalogProductList;
+  if (!hasAnyProductContainer) return;
 
-  // Виходимо, якщо productList не знайдено (не index.html)
-  if (!productList) return; 
+  try {
+    const productsRef = collection(db, "products");
+    const q = query(productsRef);
+    const querySnapshot = await getDocs(q);
 
-  try {
-    const productsRef = collection(db, "products");
-    const q = query(productsRef);
-    const querySnapshot = await getDocs(q);
+    const productsArray = [];
+    querySnapshot.forEach((docSnap) => {
+      productsArray.push(normalizeProduct(docSnap));
+    });
 
-    const productsArray = [];
-    querySnapshot.forEach((doc) => {
-      productsArray.push({ id: doc.id, ...doc.data() });
-    });
+    allProducts = productsArray;
 
-    // Приховуємо індикатор завантаження
-    if (loadingProducts) loadingProducts.style.display = 'none'; 
-    
-    if (productsArray.length === 0) {
-      productList.innerHTML = '<p>Товари для презентації відсутні. Додайте їх у колекцію "products" у Firestore.</p>';
-    } else {
-      renderProducts(productsArray);
-      // КРИТИЧНО: ВИПРАВЛЕНО: Викликаємо оновлення видимості кнопок після рендерингу
-      updateVisibility(); 
-    }
-  } catch (error) {
-    console.error("Помилка завантаження товарів:", error.code, error.message);
-    // Чітко вказуємо на проблему з правилами доступу
-    const errorMessage = error.code === 'permission-denied' ? 
-      'Помилка доступу: Перевірте Правила Безпеки Firestore для колекції "products".' :
-      'Помилка завантаження. Перевірте консоль для деталей.';
-      
-    if (loadingProducts) loadingProducts.textContent = errorMessage;
-  }
+    if (homeProductList) {
+      renderHomeProducts(allProducts);
+    }
+
+    if (catalogProductList) {
+      initCatalogFilters(); // налаштувати фільтри
+      applyFiltersAndRender(); // перший рендер
+    }
+  } catch (error) {
+    console.error("Помилка завантаження товарів:", error.code, error.message);
+
+    const msg =
+      error.code === "permission-denied"
+        ? 'Помилка доступу: Перевірте Правила Безпеки Firestore для колекції "products".'
+        : "Помилка завантаження. Перевірте консоль для деталей.";
+
+    if (loadingHomeProducts) loadingHomeProducts.textContent = msg;
+    if (catalogLoading) catalogLoading.textContent = msg;
+  }
 };
 
-// Запуск завантаження товарів при завантаженні головної сторінки
-if (productList) {
-  loadProducts();
-}
+// === 9. CATALOG FILTERS & SORT ===
 
+let brandCheckboxes = [];
+let genderRadios = [];
+let sizeCheckboxes = [];
+let priceMinInput = null;
+let priceMaxInput = null;
+let sortSelect = null;
+let applyFiltersBtn = null;
+let resetFiltersBtn = null;
 
-// === 7. ЛОГІКА МОДАЛЬНОГО ВІКНА ===
+const initCatalogFilters = () => {
+  if (!catalogPage) return;
+
+  brandCheckboxes = Array.from(
+    document.querySelectorAll('input[name="brandFilter"]')
+  );
+  genderRadios = Array.from(
+    document.querySelectorAll('input[name="genderFilter"]')
+  );
+  sizeCheckboxes = Array.from(
+    document.querySelectorAll('input[name="sizeFilter"]')
+  );
+  priceMinInput = document.getElementById("priceMin");
+  priceMaxInput = document.getElementById("priceMax");
+  sortSelect = document.getElementById("sortSelect");
+  applyFiltersBtn = document.getElementById("applyFiltersBtn");
+  resetFiltersBtn = document.getElementById("resetFiltersBtn");
+
+  if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      applyFiltersAndRender();
+    });
+  }
+
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      resetFilters();
+      applyFiltersAndRender();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      applyFiltersAndRender();
+    });
+  }
+};
+
+const resetFilters = () => {
+  // бренди
+  brandCheckboxes.forEach((cb) => {
+    cb.checked = true; // один бренд — хай буде за замовчуванням увімкнений
+  });
+
+  // стать
+  genderRadios.forEach((r) => {
+    r.checked = r.value === "all";
+  });
+
+  // розмір
+  sizeCheckboxes.forEach((cb) => {
+    cb.checked = false;
+  });
+
+  if (priceMinInput) priceMinInput.value = "";
+  if (priceMaxInput) priceMaxInput.value = "";
+  if (sortSelect) sortSelect.value = "recommended";
+};
+
+const getFilteredAndSortedProducts = () => {
+  let result = [...allProducts];
+
+  // BRAND
+  const selectedBrands = brandCheckboxes
+    .filter((cb) => cb.checked)
+    .map((cb) => cb.value.toLowerCase());
+
+  if (selectedBrands.length > 0) {
+    result = result.filter((p) => selectedBrands.includes(p.brand));
+  }
+
+  // GENDER
+  const genderSelected =
+    genderRadios.find((r) => r.checked)?.value || "all";
+  if (genderSelected !== "all") {
+    result = result.filter((p) => p.gender === genderSelected);
+  }
+
+  // SIZE
+  const selectedSizes = sizeCheckboxes
+    .filter((cb) => cb.checked)
+    .map((cb) => parseInt(cb.value, 10))
+    .filter((n) => !isNaN(n));
+
+  if (selectedSizes.length > 0) {
+    result = result.filter(
+      (p) =>
+        Array.isArray(p.sizes) &&
+        p.sizes.some((size) => selectedSizes.includes(size))
+    );
+  }
+
+  // PRICE
+  const min = priceMinInput ? parseFloat(priceMinInput.value) : NaN;
+  const max = priceMaxInput ? parseFloat(priceMaxInput.value) : NaN;
+
+  if (!isNaN(min)) {
+    result = result.filter((p) => p.price >= min);
+  }
+  if (!isNaN(max)) {
+    result = result.filter((p) => p.price <= max);
+  }
+
+  // SORT
+  const sortMode = sortSelect ? sortSelect.value : "recommended";
+
+  if (sortMode === "priceAsc") {
+    result.sort((a, b) => a.price - b.price);
+  } else if (sortMode === "priceDesc") {
+    result.sort((a, b) => b.price - a.price);
+  } else if (sortMode === "newest") {
+    result.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  return result;
+};
+
+const applyFiltersAndRender = () => {
+  if (!catalogProductList) return;
+  const filtered = getFilteredAndSortedProducts();
+  renderCatalogProducts(filtered);
+};
+
+// === 10. MODAL LOGIC ===
 
 if (modal) {
-  // Закриття по кнопці X
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => modal.classList.remove('show'));
-  }
-  
-  // Закриття по кліку поза вікном
-  modal.addEventListener('click', e => {
-    if (e.target === modal) modal.classList.remove('show');
-  });
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      modal.classList.remove("show");
+    });
+  }
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) modal.classList.remove("show");
+  });
 }
+
+// === 11. START LOADING PRODUCTS (HOME & CATALOG) ===
+
+loadProducts();

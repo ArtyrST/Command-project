@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Каталог — NIKE Showcase</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+    <div class="container">
+        <div class="logo">NIKE — Showcase</div>
+        <nav>
+            <a href="index.html">Головна</a>
+            <a href="catalog.html">Всі товари</a>
+            <a href="about.html">Про нас</a>
+            <a href="admin.html" id="adminTab" class="btn" style="display: none;">Додати товар</a>
+            <a href="https://forms.gle/replace-with-your-form-id" target="_blank" class="btn form-btn auth-required" style="display: none;">Google Форма</a>
+
+            <div class="user-profile-container">
+                <a href="auth.html" class="btn auth-btn">Увійти / Зареєструватися</a>
+
+                <div id="userAvatar" class="user-avatar" style="display: none;">
+                    😊
+                </div>
+
+                <p id="userInfo" class="user-info-text" style="display: none;"></p>
+
+                <button id="logoutBtn" class="header-logout-btn" style="display: none;">Вийти</button>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<main id="catalogPage">
+    <section class="catalog-section">
+        <div class="container catalog-layout">
+            <!-- ФІЛЬТРИ -->
+            <aside class="filters">
+                <h2>Фільтри</h2>
+
+                <!-- Бренд -->
+                <div class="filter-block">
+                    <h3>Бренд</h3>
+                    <label class="filter-checkbox">
+                        <input type="checkbox" name="brandFilter" value="nike" checked>
+                        Nike
+                    </label>
+                </div>
+
+                <!-- Стать -->
+                <div class="filter-block">
+                    <h3>Стать</h3>
+                    <label class="filter-radio">
+                        <input type="radio" name="genderFilter" value="all" checked>
+                        Усі
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="genderFilter" value="male">
+                        Чоловічі
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="genderFilter" value="female">
+                        Жіночі
+                    </label>
+                    <label class="filter-radio">
+                        <input type="radio" name="genderFilter" value="unisex">
+                        Унісекс
+                    </label>
+                </div>
+
+                <!-- Розмір -->
+                <div class="filter-block">
+                    <h3>Розмір</h3>
+                    <div class="sizes-grid">
+                        <!-- можеш змінити набір розмірів під себе -->
+                        <label><input type="checkbox" name="sizeFilter" value="38"> 38</label>
+                        <label><input type="checkbox" name="sizeFilter" value="39"> 39</label>
+                        <label><input type="checkbox" name="sizeFilter" value="40"> 40</label>
+                        <label><input type="checkbox" name="sizeFilter" value="41"> 41</label>
+                        <label><input type="checkbox" name="sizeFilter" value="42"> 42</label>
+                        <label><input type="checkbox" name="sizeFilter" value="43"> 43</label>
+                        <label><input type="checkbox" name="sizeFilter" value="44"> 44</label>
+                        <label><input type="checkbox" name="sizeFilter" value="45"> 45</label>
+                    </div>
+                </div>
+
+                <!-- Ціна -->
+                <div class="filter-block">
+                    <h3>Ціна (грн)</h3>
+                    <div class="price-range">
+                        <input type="number" id="priceMin" placeholder="Від">
+                        <span>—</span>
+                        <input type="number" id="priceMax" placeholder="До">
+                    </div>
+                </div>
+
+                <!-- Кнопки -->
+                <div class="filter-actions">
+                    <button id="applyFiltersBtn" class="btn-primary">Застосувати</button>
+                    <button id="resetFiltersBtn" class="btn-ghost">Скинути</button>
+                </div>
+            </aside>
+
+            <!-- СПИСОК ТОВАРІВ -->
+            <section class="catalog-content">
+                <div class="catalog-toolbar">
+                    <h1>Всі товари</h1>
+
+                    <div class="sort-wrapper">
+                        <label for="sortSelect">Сортування:</label>
+                        <select id="sortSelect">
+                            <option value="recommended">Рекомендовані</option>
+                            <option value="priceAsc">Ціна: від дешевих</option>
+                            <option value="priceDesc">Ціна: від дорогих</option>
+                            <option value="newest">Спочатку нові</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="product-list" id="catalogProducts">
+                    <p id="catalogLoading">Завантаження товарів...</p>
+                </div>
+            </section>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <p>© 2025 NIKE — Showcase</p>
+</footer>
+
+<!-- Модальне вікно деталей -->
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <button id="closeBtn" class="close-btn">&times;</button>
+        <h3 id="modalTitle">Деталі товару</h3>
+        <div class="placeholder"></div>
+        <p id="modalDescription">Завантаження деталей...</p>
+    </div>
+</div>
+
+<script type="module" src="firebase.js"></script>
+</body>
+</html>
